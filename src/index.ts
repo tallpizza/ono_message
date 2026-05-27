@@ -7,6 +7,7 @@ export const app = new Hono();
 const PORT = Number(process.env.PORT) || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
+console.log(`PAGE_ACCESS_TOKEN loaded: ${PAGE_ACCESS_TOKEN ? PAGE_ACCESS_TOKEN.substring(0, 10) + '...' : 'NOT LOADED'}`);
 const TRIGGER_KEYWORD = process.env.TRIGGER_KEYWORD?.toLowerCase() || 'hello';
 const REPLY_TEXT = process.env.REPLY_TEXT || 'Hello!';
 
