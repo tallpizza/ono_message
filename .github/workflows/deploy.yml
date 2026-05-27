@@ -12,4 +12,8 @@ jobs:
     steps:
       - name: Trigger Dokploy Webhook
         run: |
-          curl -X POST "https://dokploy.tallpizza.com/api/deploy/rp62jS1ug6XV3b6QIYG7B"
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/main"}' \
+            "https://dokploy.tallpizza.com/api/deploy/rp62jS1ug6XV3b6QIYG7B"
