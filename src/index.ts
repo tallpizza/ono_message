@@ -5,8 +5,8 @@ import 'dotenv/config';
 export const app = new Hono();
 
 const PORT = Number(process.env.PORT) || 3100;
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-const HUB_VERIFY_TOKEN = process.env.HUB_VERIFY_TOKEN;
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
+const HUB_VERIFY_TOKEN = process.env.HUB_VERIFY_TOKEN || process.env.VERIFY_TOKEN;
 const KAKAO_THEME_LINK = process.env.KAKAO_THEME_LINK || 'https://example.com/kakaotalk-theme-link';
 
 console.log('Available Env Keys:', Object.keys(process.env).filter(key => !key.startsWith('npm_') && !key.startsWith('NODE_')));
