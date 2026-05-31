@@ -4,20 +4,34 @@ import 'dotenv/config';
 
 export const app = new Hono();
 
-const PORT = Number(process.env.PORT) || 3000;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
-console.log(`PAGE_ACCESS_TOKEN loaded: ${PAGE_ACCESS_TOKEN ? PAGE_ACCESS_TOKEN.substring(0, 10) + '...' : 'NOT LOADED'}`);
-const TRIGGER_KEYWORD = process.env.TRIGGER_KEYWORD?.toLowerCase() || 'hello';
-const REPLY_TEXT = process.env.REPLY_TEXT || 'Hello!';
+const PORT = Number(process.env.PORT) || 3100;
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+const HUB_VERIFY_TOKEN = process.env.HUB_VERIFY_TOKEN;
+const KAKAO_THEME_LINK = process.env.KAKAO_THEME_LINK || 'https://example.com/kakaotalk-theme-link';
 
-// GET: Webhook verification
+const FACEBOOK_PAGE_ID = '297253340139924';
+const INSTAGRAM_USERNAME = 'ono.giftshop_';
+
+// Keywords to match in comments
+const COMMENT_KEYWORDS = ['테마', '카톡테마', '카카오톡', '링크', '공유', 'ono', '오앤오'];
+
+// Match triggers in DM
+const FOLLOW_CHECK_TRIGGERS = ['팔로우 했어요', '완료', '팔로우', '확인'];
+
+// In-memory stores for deduplication
+const processedComments = new Set<string>();
+const rewardedUsers = new Set<string>();
+
+console.log(`PAGE_ACCESS_TOKEN loaded: ${PAGE_ACCESS_TOKEN ? PAGE_ACCESS_TOKEN.substring(0, 10) + '...' : 'NOT LOADED'}`);
+console.log(`HUB_VERIFY_TOKEN loaded: ${HUB_VERIFY_TOKEN ? 'YES' : 'NO'}`);
+
+// GET /webhook: Webhook verification
 app.get('/webhook', (c) => {
   const mode = c.req.query('hub.mode');
   const token = c.req.query('hub.verify_token');
   const challenge = c.req.query('hub.challenge');
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token === HUB_VERIFY_TOKEN) {
     console.log('Webhook verified successfully!');
     return c.text(challenge || '');
   }
@@ -26,160 +40,236 @@ app.get('/webhook', (c) => {
   return c.text('Forbidden', 403);
 });
 
-// HTML Layout for static policies
-function htmlLayout(title: string, bodyContent: string) {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; background-color: #fafafa; }
-    .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eef; }
-    h1 { color: #111; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-top: 0; }
-    h2 { color: #222; margin-top: 24px; font-size: 1.3em; }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 8px; }
-    p { margin: 16px 0; }
-    .footer { margin-top: 40px; font-size: 0.9em; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
-    a { color: #3b82f6; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>${title}</h1>
-    ${bodyContent}
-    <div class="footer">
-      Contact: <a href="mailto:6789ekdms@naver.com">6789ekdms@naver.com</a><br>
-      Last updated: May 27, 2026
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-// GET: Privacy Policy
-app.get('/privacy', (c) => {
-  const content = `
-    <p>ONO Message uses Instagram API access only to receive and respond to Instagram messages for the connected Instagram professional account.</p>
-    <h2>We may process the following data:</h2>
-    <ul>
-      <li>Instagram user ID</li>
-      <li>Instagram account ID</li>
-      <li>Message content sent to the connected Instagram account</li>
-      <li>Message timestamps</li>
-      <li>Webhook event metadata</li>
-    </ul>
-    <h2>Data Usage</h2>
-    <p>We use this data only to provide automated customer message handling and reply features.</p>
-    <p>We do not sell personal data. We do not share personal data with third parties except service providers required to operate this service.</p>
-    <p>Data may be stored only as needed to operate, debug, secure, and improve the messaging service.</p>
-    <p>Users may request deletion of their data by contacting: <a href="mailto:6789ekdms@naver.com">6789ekdms@naver.com</a></p>
-  `;
-  return c.html(htmlLayout('Privacy Policy', content));
-});
-
-// GET: Data Deletion Instructions
-app.get('/delete-data', (c) => {
-  const content = `
-    <p>If you want your Instagram message data or account-related data deleted from ONO Message, please email us at: <a href="mailto:6789ekdms@naver.com">6789ekdms@naver.com</a></p>
-    <h2>Please Include:</h2>
-    <ul>
-      <li>Your Instagram username</li>
-      <li>A short request such as “Please delete my data”</li>
-    </ul>
-    <p>We will review and delete applicable data within a reasonable period, unless retention is required for legal, security, or abuse-prevention reasons.</p>
-    <h2>Alternative Access Removal</h2>
-    <p>You can also remove app access directly from Instagram:</p>
-    <p><strong>Instagram Settings > Website permissions > Apps and websites > Remove ONO Message / ono-IG</strong></p>
-  `;
-  return c.html(htmlLayout('Data Deletion Instructions', content));
-});
-
-// GET: Terms of Service
-app.get('/terms', (c) => {
-  const content = `
-    <p>ONO Message provides automated Instagram message handling for the connected Instagram professional account.</p>
-    <h2>Terms Agreement</h2>
-    <p>By using this service, you agree that:</p>
-    <ul>
-      <li>The service may receive and process Instagram messages sent to the connected account.</li>
-      <li>The service may send replies through the Instagram API when configured to do so.</li>
-      <li>You will use the service only for lawful business communication.</li>
-      <li>You will not use the service to send spam, abusive content, or messages that violate Meta Platform Terms.</li>
-    </ul>
-    <p>The service is provided as-is and may be changed or discontinued at any time.</p>
-  `;
-  return c.html(htmlLayout('Terms of Service', content));
-});
-
-// POST: Handle Webhook Events
+// POST /webhook: Handle webhook events
 app.post('/webhook', async (c) => {
   try {
     const body = await c.req.json();
-    console.log('Received webhook event:', JSON.stringify(body, null, 2));
+    
+    // Ignore non-instagram objects
+    if (body.object !== 'instagram') {
+      return c.text('Not Found', 404);
+    }
 
-    // Confirm webhook is from instagram
-    if (body.object === 'instagram') {
-      for (const entry of body.entry || []) {
-        for (const messagingEvent of entry.messaging || []) {
-          if (messagingEvent.message && messagingEvent.message.text) {
-            const senderId = messagingEvent.sender.id;
-            const messageText = messagingEvent.message.text.toLowerCase();
-
-            console.log(`Received message: "${messagingEvent.message.text}" from sender: ${senderId}`);
-
-            // Check keyword
-            if (messageText.includes(TRIGGER_KEYWORD)) {
-              console.log(`Keyword "${TRIGGER_KEYWORD}" matched! Sending reply...`);
-              await sendInstagramReply(senderId, REPLY_TEXT);
-            }
+    for (const entry of body.entry || []) {
+      // 1. Handle Comments (sent inside changes)
+      if (entry.changes) {
+        for (const change of entry.changes) {
+          if (change.field === 'comments') {
+            await handleCommentEvent(change.value);
           }
         }
       }
-      return c.text('EVENT_RECEIVED');
+
+      // 2. Handle Messages & Postbacks (sent inside messaging)
+      if (entry.messaging) {
+        for (const messagingEvent of entry.messaging) {
+          await handleMessagingEvent(messagingEvent);
+        }
+      }
     }
 
-    return c.text('Not Found', 404);
+    return c.text('EVENT_RECEIVED');
   } catch (error) {
     console.error('Error processing webhook:', error);
     return c.text('Internal Server Error', 500);
   }
 });
 
-async function sendInstagramReply(recipientId: string, text: string) {
-  if (!PAGE_ACCESS_TOKEN || PAGE_ACCESS_TOKEN === 'your_facebook_page_access_token_here') {
-    console.error('PAGE_ACCESS_TOKEN is not set or placeholder!');
+// Process Instagram Comments
+async function handleCommentEvent(value: any) {
+  if (!value || !value.id || !value.text) return;
+
+  const commentId = value.id;
+  const commentText = value.text;
+  const commenterId = value.from?.id;
+  const commenterUsername = value.from?.username;
+  const mediaId = value.media?.id;
+
+  console.log(`[comment received] ID: ${commentId}, User: ${commenterUsername} (${commenterId}), Media: ${mediaId}, Text: "${commentText}"`);
+
+  // Check duplicate comment_id
+  if (processedComments.has(commentId)) {
+    console.log(`[duplicate skipped] Comment ID: ${commentId} already processed.`);
     return;
   }
 
-  const url = `https://graph.facebook.com/v20.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  // Check keyword match (case-insensitive and partial match)
+  const lowerText = commentText.toLowerCase();
+  const isMatched = COMMENT_KEYWORDS.some(keyword => lowerText.includes(keyword.toLowerCase()));
+
+  if (!isMatched) {
+    return;
+  }
+
+  console.log(`[keyword matched] Comment: "${commentText}" matched keywords.`);
+  
+  // Mark as processed
+  processedComments.add(commentId);
+
+  // Send Private Reply
+  await sendPrivateReply(commentId, commenterUsername);
+}
+
+// Send Private Reply with Quick Reply Button
+async function sendPrivateReply(commentId: string, username: string) {
+  const url = `https://graph.facebook.com/v25.0/${FACEBOOK_PAGE_ID}/messages`;
+  
+  const payload = {
+    recipient: {
+      comment_id: commentId
+    },
+    message: {
+      text: `카카오톡 테마 링크를 보내드릴게요. 먼저 ${INSTAGRAM_USERNAME} 팔로우를 완료하셨나요?`,
+      quick_replies: [
+        {
+          content_type: 'text',
+          title: '팔로우 했어요',
+          payload: 'FOLLOW_CHECK'
+        }
+      ]
+    }
+  };
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
       },
-      body: JSON.stringify({
-        recipient: { id: recipientId },
-        message: { text: text },
-      }),
+      body: JSON.stringify(payload)
     });
 
     const result: any = await response.json();
     if (response.ok) {
-      console.log(`Reply sent successfully to ${recipientId}:`, result);
+      console.log(`[private reply sent] To comment: ${commentId}, Result:`, JSON.stringify(result));
     } else {
-      console.error(`Failed to send reply to ${recipientId}:`, result);
+      console.error(`[Meta API error body] Private reply failed:`, JSON.stringify(result, null, 2));
     }
   } catch (error) {
-    console.error('Error sending Instagram reply:', error);
+    console.error('Error sending private reply:', error);
   }
 }
 
+// Process DM Messages & Postbacks
+async function handleMessagingEvent(event: any) {
+  const senderId = event.sender?.id;
+  if (!senderId) return;
+
+  // Skip echo messages (messages sent by the page itself)
+  if (event.message?.is_echo) {
+    return;
+  }
+
+  let isFollowCheckRequested = false;
+
+  // 1. Check Quick Replies
+  if (event.message?.quick_reply?.payload === 'FOLLOW_CHECK') {
+    console.log(`[quick reply received] FOLLOW_CHECK from sender: ${senderId}`);
+    isFollowCheckRequested = true;
+  }
+
+  // 2. Check Postbacks
+  if (event.postback?.payload === 'FOLLOW_CHECK') {
+    console.log(`[postback received] FOLLOW_CHECK from sender: ${senderId}`);
+    isFollowCheckRequested = true;
+  }
+
+  // 3. Check Normal Text Matches
+  if (event.message?.text) {
+    const text = event.message.text.trim().toLowerCase();
+    console.log(`[message received] From sender: ${senderId}, Text: "${event.message.text}"`);
+
+    const isTriggerWord = FOLLOW_CHECK_TRIGGERS.some(trigger => text.includes(trigger.toLowerCase()));
+    if (isTriggerWord) {
+      isFollowCheckRequested = true;
+    }
+  }
+
+  if (isFollowCheckRequested) {
+    await processFollowCheckFlow(senderId);
+  }
+}
+
+// Follow Check Flow
+async function processFollowCheckFlow(senderId: string) {
+  // Check if already rewarded
+  if (rewardedUsers.has(senderId)) {
+    console.log(`[duplicate skipped] Sender: ${senderId} already received the link.`);
+    await sendDM(senderId, '이미 링크를 보내드렸어요. 위 메시지를 확인해주세요.');
+    return;
+  }
+
+  console.log(`[follow check started] Checking follow status for sender: ${senderId}`);
+  const followStatus = await checkUserFollowsBusiness(senderId);
+  console.log(`[follow check result] Sender: ${senderId}, IsFollowing: ${followStatus}`);
+
+  if (followStatus) {
+    // Add to rewarded list
+    rewardedUsers.add(senderId);
+    
+    // Send Success Link
+    await sendDM(senderId, `팔로우 확인됐어요! 카카오톡 테마 링크 보내드릴게요 💛\n${KAKAO_THEME_LINK}`);
+    console.log(`[reward sent] Link sent to sender: ${senderId}`);
+  } else {
+    // Send Retry Request
+    await sendDM(senderId, `아직 팔로우 확인이 안 되는 것 같아요. ${INSTAGRAM_USERNAME} 팔로우 후 다시 '팔로우 했어요' 버튼을 눌러주세요.`);
+  }
+}
+
+// Fetch user profile to check follow status
+async function checkUserFollowsBusiness(senderId: string): Promise<boolean> {
+  const url = `https://graph.facebook.com/v25.0/${senderId}?fields=username,name,is_user_follow_business,is_business_follow_user&access_token=${PAGE_ACCESS_TOKEN}`;
+
+  try {
+    const response = await fetch(url);
+    const result: any = await response.json();
+
+    if (response.ok) {
+      return result.is_user_follow_business === true;
+    } else {
+      console.error(`[Meta API error body] Follow check failed:`, JSON.stringify(result, null, 2));
+      return false;
+    }
+  } catch (error) {
+    console.error('Error in checkUserFollowsBusiness:', error);
+    return false;
+  }
+}
+
+// Send standard DM message
+async function sendDM(recipientId: string, text: string) {
+  const url = `https://graph.facebook.com/v25.0/${FACEBOOK_PAGE_ID}/messages`;
+
+  const payload = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      text: text
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result: any = await response.json();
+    if (!response.ok) {
+      console.error(`[Meta API error body] Send DM failed:`, JSON.stringify(result, null, 2));
+    }
+  } catch (error) {
+    console.error('Error sending DM:', error);
+  }
+}
+
+// Start Server
 console.log(`Server starting on port ${PORT}`);
 serve({
   fetch: app.fetch,
