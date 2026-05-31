@@ -9,6 +9,9 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const HUB_VERIFY_TOKEN = process.env.HUB_VERIFY_TOKEN;
 const KAKAO_THEME_LINK = process.env.KAKAO_THEME_LINK || 'https://example.com/kakaotalk-theme-link';
 
+console.log('Available Env Keys:', Object.keys(process.env).filter(key => !key.startsWith('npm_') && !key.startsWith('NODE_')));
+console.log(`PAGE_ACCESS_TOKEN loaded: ${PAGE_ACCESS_TOKEN ? PAGE_ACCESS_TOKEN.substring(0, 10) + '...' : 'NOT LOADED'}`);
+
 const FACEBOOK_PAGE_ID = '297253340139924';
 const INSTAGRAM_USERNAME = 'ono.giftshop_';
 
@@ -21,8 +24,6 @@ const FOLLOW_CHECK_TRIGGERS = ['팔로우 했어요', '완료', '팔로우', '�
 // In-memory stores for deduplication
 const processedComments = new Set<string>();
 const rewardedUsers = new Set<string>();
-
-console.log(`PAGE_ACCESS_TOKEN loaded: ${PAGE_ACCESS_TOKEN ? PAGE_ACCESS_TOKEN.substring(0, 10) + '...' : 'NOT LOADED'}`);
 console.log(`HUB_VERIFY_TOKEN loaded: ${HUB_VERIFY_TOKEN ? 'YES' : 'NO'}`);
 
 // GET /webhook: Webhook verification
