@@ -33,7 +33,15 @@ globalThis.fetch = (async (url: string | URL, options?: any): Promise<Response> 
     );
   }
 
-  // 2. Default success response for messages sending
+  // 2. Generate download ID endpoint
+  if (urlStr.includes('tallpizza.com/theme/generate-download-id')) {
+    return new Response(
+      JSON.stringify({ id: 'mock-uuid-999' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // 3. Default success response for messages sending
   return new Response(
     JSON.stringify({ message_id: 'mid.12345' }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }

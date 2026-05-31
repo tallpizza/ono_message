@@ -13,7 +13,7 @@ const FACEBOOK_PAGE_ID = '297253340139924';
 const INSTAGRAM_USERNAME = 'ono.giftshop_';
 
 // Keywords to match in comments
-const COMMENT_KEYWORDS = ['테마', '카톡테마', '카카오톡', '링크', '공유', 'ono', '오앤오'];
+const COMMENT_KEYWORDS = ['ono', '오앤오'];
 
 // Match triggers in DM
 const FOLLOW_CHECK_TRIGGERS = ['팔로우 했어요', '완료', '팔로우', '확인'];
@@ -207,10 +207,35 @@ async function processFollowCheckFlow(senderId: string) {
   if (followStatus) {
     // Add to rewarded list
     rewardedUsers.add(senderId);
+
+    // Retrieve dynamic download ID from tallpizza.com backend
+    let finalLink = KAKAO_THEME_LINK;
+    try {
+      console.log('[generate link] Fetching download ID from tallpizza.com...');
+      const response = await fetch('https://tallpizza.com/theme/generate-download-id');
+      if (response.ok) {
+        const data: any = await response.json();
+        if (data && data.id) {
+          const downloadId = data.id;
+          console.log(`[generate link] Successfully generated download id: ${downloadId}`);
+          if (KAKAO_THEME_LINK.includes('?')) {
+            finalLink = `${KAKAO_THEME_LINK}&id=${downloadId}`;
+          } else {
+            finalLink = `${KAKAO_THEME_LINK}?id=${downloadId}`;
+          }
+        } else {
+          console.warn('[generate link] Response did not contain id field:', data);
+        }
+      } else {
+        console.error('[generate link] API returned non-OK status:', response.status);
+      }
+    } catch (error) {
+      console.error('[generate link] Failed to fetch generate-download-id:', error);
+    }
     
     // Send Success Link
-    await sendDM(senderId, `팔로우 확인됐어요! 카카오톡 테마 링크 보내드릴게요 💛\n${KAKAO_THEME_LINK}`);
-    console.log(`[reward sent] Link sent to sender: ${senderId}`);
+    await sendDM(senderId, `팔로우 확인됐어요! 카카오톡 테마 링크 보내드릴게요 💛\n${finalLink}`);
+    console.log(`[reward sent] Link sent to sender: ${senderId}, Link: ${finalLink}`);
   } else {
     // Send Retry Request
     await sendDM(senderId, `아직 팔로우 확인이 안 되는 것 같아요. ${INSTAGRAM_USERNAME} 팔로우 후 다시 '팔로우 했어요' 버튼을 눌러주세요.`);
