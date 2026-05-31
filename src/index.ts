@@ -120,7 +120,7 @@ async function sendPrivateReply(commentId: string, username: string) {
       comment_id: commentId
     },
     message: {
-      text: `카카오톡 테마 링크를 보내드릴게요. 먼저 ${INSTAGRAM_USERNAME} 팔로우를 완료하셨나요?`,
+      text: `💥오앤오테마 벌써 시즌 7💥\n오앤오와 늘 함께해주셔서 감사해요! \n테마 보내드릴게요〰\n\n‼️ 그전에\n먼저 ${INSTAGRAM_USERNAME} 팔로우를 하셨나요?`,
       quick_replies: [
         {
           content_type: 'text',
@@ -235,7 +235,7 @@ async function processFollowCheckFlow(senderId: string) {
     }
     
     // Send Success Link
-    await sendDM(senderId, `팔로우 확인됐어요! 카카오톡 테마 링크 보내드릴게요 💛\n${finalLink}`);
+    await sendDM(senderId, `💥 팔로우 확인 완료💥\n\n테마 링크 보내드릴게요〰\n*아래 내용은 필수 확인*\n🚫테마 링크 관련 불펌/도용/거래/ 다른 사람 전달은 모두 체크되오니 절대 금지! \n‼️그리고 링크는 하루동안 유지되며 이후에는 들어갈 수 없으니 이전에 다운 받아주세요. 재발송은 불가합니다.\n\n${finalLink}`);
     console.log(`[reward sent] Link sent to sender: ${senderId}, Link: ${finalLink}`);
   } else {
     // Send Retry Request
